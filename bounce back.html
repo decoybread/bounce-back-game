@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+
+<canvas id="game" width="600" height="600" style="position:absolute; background-color: #6b6b6b"></canvas>
+<p id="Ltitle" style="font-size: 50px; position: absolute; top:100px; left:700px">hi</p>
+<script>
+
+const canvas = document.getElementById("game");
+const player = canvas.getContext("2d");
+
+let rows = [];
+
+
+
+//MAKE SURE THIS IS SET TO ZERO
+let currentStage = 0;
+//YEAH THIS THING ^
+
+
+
+
+let levelTitle = document.getElementById("Ltitle");
+let titleList = [
+    "welcome!",
+    "easiest maze ever.",
+    "it's bouncy!",
+    "lol",
+    "portals",
+    "get trapped",
+    "dig your way through",
+    "road blocked",
+    "confusing textures",
+    "break time",
+    "eh? where to go",
+    "bounce parity",
+    "2 paths",
+    "YOU WIN! YAY"
+];
+
+const wallSprite = new Image();
+wallSprite.src = "fileWallSprite.png";
+
+const spikeSprite = new Image();
+spikeSprite.src = "fileSpikeSprite.png";
+
+const springSprite = new Image();
+springSprite.src = "fileSpringSprite.png";
+
+const portalSprite = new Image();
+portalSprite.src = "filePortalSprite.png";
+
+const goalSprite = new Image();
+goalSprite.src = "fileGoalSprite.png";
+
+let playerSprite = new Image();
+playerSprite.src = "playerIdle.png";
+
+let moveUp = new Image();
+moveUp.src = "playerMoveUp.png";
+
+let moveDown = new Image();
+moveDown.src = "playerMoveDown.png";
+
+let moveRight = new Image();
+moveRight.src = "playerMoveRight.png";
+
+let moveLeft = new Image();
+moveLeft.src = "playerMoveLeft.png";
+
+
+let playerX = 1;
+let playerY = 1;
+let levely = {
+    0:`
+############
+#..........#
+############
+#@........%#
+############
+#..........#
+#.#.#.#..#.#
+#.#.#.#..#.#
+#.###.#....#
+#.#.#.#..#.#
+#..........#
+############
+    `.trim(),
+    1:`
+############
+############
+############
+#####.######
+#####.######
+#@....######
+#####.######
+#####.....%#
+############
+############
+############
+############`.trim(),
+    2:`
+############
+############
+############
+############
+#+......####
+######....%#
+######+#####
+#@...#.#####
+####.#.#####
+####...#####
+############
+############
+    `.trim(),
+    3:`
+############
+##########+#
+##########+#
+#.@#...#...#
+#..#...#...#
+#..+...#...#
+#........#+#
+#........#+#
+#...#....#+#
+##########%#
+############
+############
+    `.trim(),
+    4:`
+############
+############
+##########+#
+#.@#...#...#
+#..#...1...#
+#..........#
+#........#.#
+#........#.#
+#....#...#1#
+#######+####
+#######%####
+############
+    `.trim(),
+    5:`
+############
+###..###.###
+#*..@...+.%#
+##..#....###
+##.......###
+#..#.....###
+#..#.....###
+#..#.....###
+#..#.....###
+#..........#
+#*+.......+#
+############
+    `.trim(),
+    6:`
+############
+#..+.#....+#
+#..#.+....+#
+########+++#
+#..+.+.....#
+#..+.+.....#
+#%.#.+.#@#.#
+#####+.....#
+#..#.+.....#
+#..+.#+++++#
+#..+.#....+#
+############
+    `.trim(),
+    7:`
+############
+#@...#.....#
+#....#.....#
+##...#.....#
+#.....######
+#..........#
+#*.........#
+#%###.#....#
+#.....######
+#....#.....#
+#....#.....#
+############
+    `.trim(),
+    8:`
+####4#######
+#1..+..#@.+#
+#.2#.#....+#
+#+.#.###...#
+###...3###.#
+#4.#....#..#
+#..#*.#*#..#
+#.#######..#
+#.*#2.5.#..#
+#..#.#..#.+#
+##5#3*.%#.1#
+############
+    `.trim(),
+    9:`
+############
+############
+#.##...%##.#
+#.##2...##.#
+#.########.#
+*.+......+2#
+#.....1...*#
+#.########.#
+#.##...1##.#
+#.##.@..##.#
+############
+############
+    `.trim(),
+    10:`
+############
+#..........#
+#1..@..+...#
+############
+#.2........#
+#.....#...2#
+#*3+.......#
+############
+#*......1..#
+#.......3..#
+#.........%#
+########*###
+    `.trim(),
+    11:`
+###*########
+#%++.1#...##
+###.###...##
+#...+....###
+#...*...####
+#...#.....##
+##..@..+..##
+##.#...*..##
+#1.....+*###
+#.**####..##
+#...#..#..##
+############
+    `.trim(),
+    12:`
+############
+#1...#*.#.@#
+#....#..#.##
+#.#..#.##.+#
+#+...#+...+#
+#.*..#+....#
+#..###+....#
+#....#+..#+#
+#..%.#+...1#
+##...##..###
+#....#...#.#
+############
+    `.trim(),
+    13:`
+############
+#+++#+12345#
+#+++#++++++#
+#+++#++++++#
+#+++#++++++#
+#+++##++@++#
+#+++#++++++#
+#+++#++++++#
+#+++#++++++#
+#+++#++++++#
+#+++#12345+#
+############
+    `.trim() 
+};
+let placeholder = 0;
+
+let playerDirection = "idle";
+
+let teleY = 0;
+let teleX = 0;
+
+let temporaryBrokenCords = [];
+
+
+function drawLevel(level) {
+    rows = level.split("\n");
+    
+    for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < rows[y].length; x++) {
+            if (rows[y][x] === "#") {
+                player.fillStyle = "black";
+                player.drawImage(wallSprite, x *50, y * 50, 50, 50);
+            }
+            }
+        }
+}
+
+//the single line below this was made with AI
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let isMoving = false;
+
+//BOUNCE BLOCK MOVING YOU
+
+async function bounceAutoMove(initialDirection){
+    if(initialDirection === "right"){
+        isMoving = true;
+        while(true){
+            
+
+            if(rows[playerY][playerX-1] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        
+        if(rows[playerY][playerX-1] === "." || rows[playerY][playerX-1] === "@" || rows[playerY][playerX-1] === "%" || rows[playerY][playerX-1] === "1" || rows[playerY][playerX-1] === "2" || rows[playerY][playerX-1] === "3" || rows[playerY][playerX-1] === "4" || rows[playerY][playerX-1] === "5" ||  (rows[playerY][playerX-1] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX-1))){
+        playerX -= 1;
+        playerDirection = "left";
+        
+        await sleep(25);
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+        for(let p = 1;p <= 5; p++){
+        if(rows[playerY][playerX] == p){
+            for (let y = 0; y < rows.length; y++) {
+                for (let x = 0; x < rows[y].length; x++) {
+                    if(rows[y][x] == p && y !== playerY && x !== playerX) {
+
+                        teleY = y;
+                        teleX = x;
+                    }
+                }
+            }
+            playerY = teleY;
+            playerX = teleX;
+        }
+        }
+        }
+        else{break;}
+    }
+        if(rows[playerY][playerX-1] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX-1)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY,playerX-1]);
+        bounceAutoMove("left");
+    }else{
+        isMoving = false;
+    }
+    
+    }
+
+    if(initialDirection === "left"){
+        isMoving = true;
+        while(true){
+
+            if(rows[playerY][playerX+1] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        if(rows[playerY][playerX+1] === "." || rows[playerY][playerX+1] === "@" || rows[playerY][playerX+1] === "%" || rows[playerY][playerX+1] === "1" || rows[playerY][playerX+1] === "2" || rows[playerY][playerX+1] === "3" || rows[playerY][playerX+1] === "4" || rows[playerY][playerX+1] === "5" ||  (rows[playerY][playerX+1] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX+1))){
+        playerX += 1;
+        playerDirection = "right";
+        
+        await sleep(25);
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+            //iuwefahmaiwuhrgm
+        for(let p = 1;p <= 5; p++){
+        if(rows[playerY][playerX] == p){
+            for (let y = 0; y < rows.length; y++) {
+                for (let x = 0; x < rows[y].length; x++) {
+                    if(rows[y][x] == p && y !== playerY && x !== playerX) {
+                        teleY = y;
+                        teleX = x;
+                    }
+                }
+            }
+            playerY = teleY;
+            playerX = teleX;
+        }
+        }
+        //ewjihfmiwuqyqgfcgyu
+        }
+        else{break;}
+    }
+    if(rows[playerY][playerX+1] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX+1)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY,playerX+1]);
+        bounceAutoMove("right");
+
+    }else{
+        isMoving = false;
+    }
+    
+    }
+
+    if(initialDirection === "down"){
+        isMoving = true;
+        while(true){
+            if(rows[playerY-1][playerX] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        if(rows[playerY-1][playerX] === "." || rows[playerY-1][playerX] === "@" || rows[playerY-1][playerX] === "%" || rows[playerY-1][playerX] === "1"|| rows[playerY-1][playerX] === "2" || rows[playerY-1][playerX] === "3" || rows[playerY-1][playerX] === "4" || rows[playerY-1][playerX] === "5" ||  (rows[playerY-1][playerX] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY-1 && x === playerX))){
+        playerY -= 1;
+        playerDirection = "up";
+        
+        await sleep(25);
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+        for(let p = 1;p <= 5; p++){
+        if(rows[playerY][playerX] == p){
+            for (let y = 0; y < rows.length; y++) {
+                for (let x = 0; x < rows[y].length; x++) {
+                    if(rows[y][x] == p && y !== playerY && x !== playerX) {
+                        teleY = y;
+                        teleX = x;
+                    }
+                }
+            }
+            playerY = teleY;
+            playerX = teleX;
+        }
+        }
+        }
+        else{break;}
+    }
+        if(rows[playerY-1][playerX] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY-1 && x === playerX)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY-1,playerX]);
+        bounceAutoMove("up");
+    }else{
+        isMoving = false;
+    }
+    
+    }
+
+    if(initialDirection === "up"){
+        isMoving = true;
+        while(true){
+            if(rows[playerY+1][playerX] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        if(rows[playerY+1][playerX] === "." || rows[playerY+1][playerX] === "@" || rows[playerY+1][playerX] === "%" || rows[playerY+1][playerX] === "1" || rows[playerY+1][playerX] === "2" || rows[playerY+1][playerX] === "3" || rows[playerY+1][playerX] === "4" || rows[playerY+1][playerX] === "5" || (rows[playerY+1][playerX] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY+1 && x === playerX))){
+        playerY += 1;
+        playerDirection = "down";
+        
+        await sleep(25);
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+        for(let p = 1;p <= 5; p++){
+            if(rows[playerY][playerX] == p){
+                for (let y = 0; y < rows.length; y++) {
+                    for (let x = 0; x < rows[y].length; x++) {
+                        if(rows[y][x] == p && y !== playerY && x !== playerX) {
+                        teleY = y;
+                        teleX = x;
+                        }
+                    }
+                }
+                playerY = teleY;
+                playerX = teleX;
+            }
+        }
+        }
+        else{break;}
+    
+}
+        if(rows[playerY+1][playerX] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY+1 && x === playerX)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY+1,playerX]);
+        bounceAutoMove("down");
+    }else{
+        isMoving = false;
+    }
+
+    }
+}
+
+//PLAYER PRESSED KEY:
+
+document.addEventListener("keydown", async (event) =>{
+    if((event.key === "s" || event.key === "ArrowDown") && isMoving === false){
+        isMoving = true;
+        while(true){
+            if(rows[playerY+1][playerX] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        if(rows[playerY+1][playerX] === "." || rows[playerY+1][playerX] === "@" || rows[playerY+1][playerX] === "%" || rows[playerY+1][playerX] === "1" || rows[playerY+1][playerX] === "2" || rows[playerY+1][playerX] === "3" || rows[playerY+1][playerX] === "4" || rows[playerY+1][playerX] === "5" || (rows[playerY+1][playerX] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY+1 && x === playerX))){
+        playerY += 1;
+        playerDirection = "down";
+        
+        await sleep(25);
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+        for(let p = 1;p <= 5; p++){
+            if(rows[playerY][playerX] == p){
+                for (let y = 0; y < rows.length; y++) {
+                    for (let x = 0; x < rows[y].length; x++) {
+                        if(rows[y][x] == p && y !== playerY && x !== playerX) {
+                        teleY = y;
+                        teleX = x;
+                        }
+                    }
+                }
+                playerY = teleY;
+                playerX = teleX;
+            }
+        }
+        }
+        else{break;}
+    
+}
+        if(rows[playerY+1][playerX] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY+1 && x === playerX)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY+1,playerX]);
+        bounceAutoMove("down");
+    }else{
+        isMoving = false;
+    }
+        
+    }
+
+    if((event.key === "w" || event.key === "ArrowUp") && isMoving === false){
+        isMoving = true;
+        while(true){
+            if(rows[playerY-1][playerX] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        if(rows[playerY-1][playerX] === "." || rows[playerY-1][playerX] === "@" || rows[playerY-1][playerX] === "%" || rows[playerY-1][playerX] === "1" || rows[playerY-1][playerX] === "2" || rows[playerY-1][playerX] === "3" || rows[playerY-1][playerX] === "4" || rows[playerY-1][playerX] === "5" ||  (rows[playerY-1][playerX] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY-1 && x === playerX))){
+        playerY -= 1;
+        playerDirection = "up";
+        
+        await sleep(25);
+        
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+        for(let p = 1;p <= 5; p++){
+        if(rows[playerY][playerX] == p){
+            for (let y = 0; y < rows.length; y++) {
+                for (let x = 0; x < rows[y].length; x++) {
+                    if(rows[y][x] == p && y !== playerY && x !== playerX) {
+                        teleY = y;
+                        teleX = x;
+                    }
+                }
+            }
+            playerY = teleY;
+            playerX = teleX;
+        }
+        }
+        }
+        else{break;}
+    }
+        if(rows[playerY-1][playerX] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY-1 && x === playerX)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY-1,playerX]);
+        bounceAutoMove("up");
+    }else{
+        isMoving = false;
+    }
+    
+    }
+
+    if((event.key === "d" || event.key === "ArrowRight") && isMoving === false){
+        isMoving = true;
+        while(true){
+
+            if(rows[playerY][playerX+1] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        if(rows[playerY][playerX+1] === "." || rows[playerY][playerX+1] === "@" || rows[playerY][playerX+1] === "%" || rows[playerY][playerX+1] === "1" || rows[playerY][playerX+1] === "2" || rows[playerY][playerX+1] === "3" || rows[playerY][playerX+1] === "4" || rows[playerY][playerX+1] === "5" || (rows[playerY][playerX+1] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX+1))){
+        playerX += 1;
+        playerDirection = "right";
+        
+        await sleep(25);
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+            //iuwefahmaiwuhrgm
+        for(let p = 1;p <= 5; p++){
+        if(rows[playerY][playerX] == p){
+            for (let y = 0; y < rows.length; y++) {
+                for (let x = 0; x < rows[y].length; x++) {
+                    if(rows[y][x] == p && y !== playerY && x !== playerX) {
+                        teleY = y;
+                        teleX = x;
+                    }
+                }
+            }
+            playerY = teleY;
+            playerX = teleX;
+        }
+        }
+        //ewjihfmiwuqyqgfcgyu
+        }
+        else{break;}
+    }
+    if(rows[playerY][playerX+1] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX+1)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY,playerX+1]);
+        bounceAutoMove("right");
+
+    }else{
+        isMoving = false;
+    }
+
+    }
+
+    if((event.key === "a" || event.key === "ArrowLeft") && isMoving === false){
+        isMoving = true;
+        while(true){
+            
+
+            if(rows[playerY][playerX-1] === "*"){
+            await sleep(50);
+            drawPlayerStart();
+            break;
+        }
+        
+        if(rows[playerY][playerX-1] === "." || rows[playerY][playerX-1] === "@" || rows[playerY][playerX-1] === "%" || rows[playerY][playerX-1] === "1" || rows[playerY][playerX-1] === "2" || rows[playerY][playerX-1] === "3" || rows[playerY][playerX-1] === "4" || rows[playerY][playerX-1] === "5" ||  (rows[playerY][playerX-1] === "+" && temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX-1))){
+        playerX -= 1;
+        playerDirection = "left";
+        
+        await sleep(25);
+        if(rows[playerY][playerX] === "%"){
+                currentStage += 1;
+                rows = levely[currentStage].split("\n");
+                drawPlayerStart();
+                break;
+            }
+        for(let p = 1;p <= 5; p++){
+        if(rows[playerY][playerX] == p){
+            for (let y = 0; y < rows.length; y++) {
+                for (let x = 0; x < rows[y].length; x++) {
+                    if(rows[y][x] == p && y !== playerY && x !== playerX) {
+
+                        teleY = y;
+                        teleX = x;
+                    }
+                }
+            }
+            playerY = teleY;
+            playerX = teleX;
+        }
+        }
+        }
+        else{break;}
+    }
+        if(rows[playerY][playerX-1] === "+" && !temporaryBrokenCords.some(([y,x]) => y === playerY && x === playerX-1)){
+        isMoving=false;
+        temporaryBrokenCords.push([playerY,playerX-1]);
+        bounceAutoMove("left");
+    }else{
+        isMoving = false;
+    }
+    
+    }
+
+if(event.key === "r" &&  isMoving === false){
+    isMoving = true;
+    await sleep(10);
+    drawPlayerStart();
+    isMoving = false
+}
+
+});
+
+
+
+
+//ACTUALLY DRAWING THE LEVEL OUT
+
+function play(){
+
+    levelTitle.innerHTML = titleList[currentStage];
+
+
+    player.clearRect(0,0,canvas.width,canvas.height);
+    drawLevel(levely[currentStage + 0]);
+
+
+
+for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < rows[y].length; x++) {
+            if(rows[y][x] === "%"){
+                player.fillStyle = "yellow";
+                player.drawImage(goalSprite,x * 50, y * 50, 50, 50);
+            }
+            
+        }
+}
+
+for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < rows[y].length; x++) {
+            if(rows[y][x] === "*"){
+                player.fillStyle = "DarkRed";
+                player.drawImage(spikeSprite,x * 50, y * 50, 50, 50);
+            }
+            
+        }
+}
+
+for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < rows[y].length; x++) {
+            if(rows[y][x] === "+" && !temporaryBrokenCords.some(([by,bx]) => by === y && bx === x)){
+                player.fillStyle = "DarkOliveGreen";
+                player.drawImage(springSprite,x * 50, y * 50, 50, 50);
+        }
+
+            
+        }
+}
+for(let p = 1;p <= 5; p++){
+for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < rows[y].length; x++) {
+            if(rows[y][x] == p && !temporaryBrokenCords.some(([by,bx]) => by === y && bx === x)){
+                player.fillStyle = "Purple";
+                player.drawImage(portalSprite,x * 50, y * 50, 50, 50);
+        }
+
+            
+        }
+}
+}
+if(isMoving===false){
+drawPlayer("idle");
+}else{
+drawPlayer(playerDirection);
+}
+
+requestAnimationFrame(() => play());
+}
+play()
+
+function drawPlayer(direction){
+    player.fillStyle = "red";
+
+    if(direction === "idle"){
+    player.drawImage(playerSprite,playerX*50, playerY*50, 50, 50);
+    }else if(direction === "up"){
+    player.drawImage(moveUp,playerX*50, playerY*50, 50, 50)
+    }else if(direction === "down"){
+    player.drawImage(moveDown,playerX*50, playerY*50, 50, 50)
+    }else if(direction === "right"){
+    player.drawImage(moveRight,playerX*50, playerY*50, 50, 50)
+    }else if(direction === "left"){
+    player.drawImage(moveLeft,playerX*50, playerY*50, 50, 50)
+    }
+}
+
+function drawPlayerStart(){
+    temporaryBrokenCords = [];
+for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < rows[y].length; x++) {
+            if(rows[y][x] === "@"){
+                player.fillStyle = "red";
+                player.drawImage(playerSprite, x * 50, y * 50, 50, 50);
+                playerX = x;
+                playerY = y;
+            }
+            
+        }
+}
+}
+
+drawPlayerStart();
+
+/*
+maybe make it so you can buffer inputs, maybe
+add pushable box
+
+Dominic option: rotates the entire game by 10%
+*/
+//made by khang nguyen, nathan zhou, sahaj villing
+
+
+</script>
